@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: joblify-front-end
+spec:
+  containers:
+    - name: frontend
+      image: joblify-frontend:latest
+      imagePullPolicy: Never
