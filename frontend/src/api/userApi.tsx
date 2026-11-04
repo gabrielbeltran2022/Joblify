@@ -56,6 +56,16 @@ export interface UserExperience {
   updatedAt?: string;
 }
 
+export interface UserCertificate {
+  _id?: string;
+  userId: string;
+  certificationImage?: string | null;
+  certificationName: string;
+  certifiedFrom: string;          
+  endDate?: Date | string | null;
+  startDate?: Date | string | null;
+}
+
 
 export const handleLogin = async (payload: LoginPayload): Promise<LoginResponse | void> => {
   try {
@@ -109,8 +119,6 @@ export const verifyOtp = async (payload: { email: string; code: string }) => {
 
 export const getUserInfo = async (userId: string): Promise<User> => {
 
-  
-
   const response = await fetch(`http://localhost:3000/api/get-user-profile/${userId}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
@@ -154,8 +162,6 @@ export const updateUserProfile = async (
   return result.data?.user || result.user || result.data || result;
 };
 
-
-
 export const addExprincesDetail = async (
   userId: string,
   updateExprinces: UserExperience
@@ -194,10 +200,110 @@ export const getUserExperiences = async (userId: string): Promise<UserExperience
 
     const result = await response.json();
 
-    // Ensures an array is returned even if backend sends null/undefined
     return result.data ?? result ?? [];
   } catch (e: any) {
     console.error("Failed to retrieve data:", e);
-    throw e; // Rethrow so the calling component can display an error state
+    throw e;
+  }
+};
+
+
+export const getUserCertificate = async (userId: string): Promise<UserCertificate[]> => {
+    try{
+      const response = await fetch(`http://localhost:3000/api/get-certification/${userId}`, {
+      method: "GET",
+      credentials: "include", 
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to retrieve experience details");
+    }
+
+    const result = await response.json();
+
+    return result.data ?? result ?? [];
+    }catch(e: any){
+      console.error('Failed to retrieve data:',e)
+      throw e 
+    }
+} 
+export const addCertificateDetail = async (
+  userId: string,
+  data: {
+    certificationName: string;
+    certifiedFrom: string;
+    startDate?: string;
+    endDate?: string;
+    certificationImage?: File | null;
+  }
+): Promise<UserCertificate> => {
+  const body = new FormData();
+  body.append("certificationName", data.certificationName);
+  body.append("certifiedFrom", data.certifiedFrom);
+  if (data.startDate) body.append("startDate", data.startDate);
+  if (data.endDate) body.append("endDate", data.endDate);
+  if (data.certificationImage) body.append("certificationImage", data.certificationImage);
+
+  const response = await fetch(`http://localhost:3000/api/add-user-certification/${userId}`, {
+    method: "POST",
+    credentials: "include",
+    body,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to add certificate details");
+  }
+
+  const result = await response.json();
+  return result.data ?? result;
+};
+
+export const updateCertificateDetail = async (
+  userId: string,
+  certId: string,
+  data: {
+    certificationName?: string;
+    certifiedFrom?: string;
+    startDate?: string;
+    endDate?: string;
+    certificationImage?: File | null;
+  }
+): Promise<UserCertificate> => {
+  const body = new FormData();
+  if (data.certificationName) body.append("certificationName", data.certificationName);
+  if (data.certifiedFrom) body.append("certifiedFrom", data.certifiedFrom);
+  if (data.startDate) body.append("startDate", data.startDate);
+  if (data.endDate) body.append("endDate", data.endDate);
+  if (data.certificationImage) body.append("certificationImage", data.certificationImage);
+
+  const response = await fetch(
+    `http://localhost:3000/api/update-user-certification/${userId}/${certId}`,
+    {
+      method: "PUT",
+      credentials: "include",
+      body,
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update certificate details");
+  }
+
+  const result = await response.json();
+  return result.data ?? result;
+};
+
+export const deleteCertificateDetail = async (certId: string): Promise<void> => {
+  const response = await fetch(`http://localhost:3000/api/delete-user-certification/${certId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to delete certificate");
   }
 };

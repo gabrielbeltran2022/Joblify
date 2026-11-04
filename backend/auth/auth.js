@@ -36,12 +36,15 @@ export const authenticationUser = (...credentials) => {
 
             const existingUser = await userModel.findById(result.data.id);
 
+
             if (!existingUser) {
                 return ErrorHandler(res, 404, "User account no longer exists");
             }
             req.user = existingUser;
 
-            const targetUserId = req.params.id;
+
+            const targetUserId = req.user.id;
+
             const isOwnAccount = targetUserId && targetUserId.toString() === existingUser._id.toString();
         
             if (credentials.length > 0) {

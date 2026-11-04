@@ -129,16 +129,54 @@ export const validateUpdateEducation = (req, res, next) => {
    CERTIFICATION VALIDATION
    ========================================================================== */
 
-export const updateCertificationSchema = z
+export const addCertificationSchema = z
   .object({
-    certId: z.string().trim().optional(), // Optional: provided when updating an existing cert
     certificationName: z
       .string({ required_error: 'Certification name is required' })
+      .trim()
+      .min(1, { message: 'Certification name cannot be empty' }),
+    certifiedFrom: z
+      .string({ required_error: 'Issuing organization is required' })
+      .trim()
+      .min(1, { message: 'Issuing organization cannot be empty' }),
+    startDate: z.coerce.date({ invalid_type_error: 'Invalid start date format' }).optional(),
+    endDate: z.coerce.date({ invalid_type_error: 'Invalid end date format' }).optional(),
+    certificationImage: z.string().trim().optional()
+  })
+  .refine(
+    (data) => {
+      if (data.startDate && data.endDate) {
+        return data.endDate >= data.startDate;
+      }
+      return true;
+    },
+    { message: 'End date must be after or equal to start date', path: ['endDate'] }
+  );
+
+export const validateAddCertification = (req, res, next) => {
+  const cleansedBody = cleanseData(req.body);
+  const result = addCertificationSchema.safeParse(cleansedBody);
+
+  if (!result.success) {
+    const errorMessage = result.error.issues[0].message;
+    return ErrorHandler(res, 400, errorMessage);
+  }
+
+  req.body = result.data;
+  next();
+};
+
+/* ---------- UPDATE: every field is optional ---------- */
+
+export const updateCertificationSchema = z
+  .object({
+    certificationName: z
+      .string()
       .trim()
       .min(1, { message: 'Certification name cannot be empty' })
       .optional(),
     certifiedFrom: z
-      .string({ required_error: 'Issuing organization is required' })
+      .string()
       .trim()
       .min(1, { message: 'Issuing organization cannot be empty' })
       .optional(),

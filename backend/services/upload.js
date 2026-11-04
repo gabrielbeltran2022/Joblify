@@ -12,13 +12,11 @@ export const createUploader = (folderName = "general") => {
 
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-      // Ensure the target directory exists before saving
       fs.mkdirSync(uploadPath, { recursive: true });
       cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
       const ext = path.extname(file.originalname);
-      // Clean, unique UUID filename
       cb(null, `${uuidv4()}${ext}`);
     },
   });

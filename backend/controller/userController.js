@@ -1,14 +1,14 @@
 import userModel from "../model/userModel.js";
 import verificationModel from '../model/verificationModel.js';
 import Education from "../model/userEducation.js";
+import Certification from '../model/userCertification.js'
+import Experience from "../model/userExprienceModel.js";
 import {  ErrorHandler, SuccessHandler } from "../utils/Utilities.js";
 import {cleanseData} from '../services/dataSanitize.js'
 import { generateAccessToken, generateRefreshToken } from "../utils/tokenUtils.js";
 import { generateAlphanumericCode } from '../utils/generateCodeVerification.js';
 import {sendVerificationEmail} from '../services/emailSender.js'
 import 'dotenv/config';
-import Experience from "../model/userExprienceModel.js";
-
 
 
 
@@ -32,16 +32,7 @@ export const getUser = async (req, res) => {
 export const getUserProfile = async (req, res) => {
     try {
         const targetUserId = req.params.id;
-        const loggedInUser = req.user; 
-
-        const isAdmin = loggedInUser.accessLevel === 2;
-        const isEmployer = loggedInUser.accessLevel === 1;
-        const isOwner = loggedInUser._id.toString() === targetUserId;
-
-        if (!isAdmin && !isEmployer && !isOwner) {
-            return ErrorHandler(res, 403, "Forbidden: You do not have permission to view this profile");
-        }
-
+        
         const existingUser = await userModel.findById(targetUserId);
 
         if (!existingUser) {
@@ -187,8 +178,8 @@ export const requestEmailVerification = async (req, res) => {
         const data = cleanseData(req.body);
         const email = data.email?.replace(/\s+/g, '').toLowerCase();
 
-        if (!email) {
-            return ErrorHandler(res, 400, "Email is required");
+        if (!email || email === 'null' || email === 'undefined' || typeof email !== 'string') {
+            return ErrorHandler(res, 400, "A valid email is required");
         }
 
         const existingUser = await userModel.findOne({ email });
@@ -196,10 +187,9 @@ export const requestEmailVerification = async (req, res) => {
         const code = generateAlphanumericCode(6);
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000); 
 
-        
-        await verificationModel.findOneAndUpdate(
+        await verificationModel.findOneAndReplace(
             { email },
-            { code, expiresAt },
+            { email, code, expiresAt }, 
             { upsert: true, returnDocument: 'after' }
         );
 
@@ -211,7 +201,6 @@ export const requestEmailVerification = async (req, res) => {
                 isVerified: true 
             }, "User is already verified. Proceeding to login.", 200);
         }
-
 
         return SuccessHandler(res, { 
             email, 
@@ -296,6 +285,7 @@ export const verifyUser = async (req, res) => {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 isProfileComplete: user.isProfileComplete
+                // accessToken: accessToken
             }
         }, "Verification successful", 200);
 
@@ -343,60 +333,6 @@ export const updateEducation = async (req,res) => {
     }
 }
 
-
-
-export const updateCertification = async (req, res) => {
-  const { id: targetUserId, certId, ...restBody } = req.body;
-  const cleanData = cleanseData(restBody);
-  const authId = req.cookies?.id;
-  const accessLevel = Number(req.cookies?.accessLevel);
-
-  try {
-    if (!targetUserId) {
-      return ErrorHandler(res, 400, 'User ID is required in the request body');
-    }
-
-    const isSelf = targetUserId === authId;
-    const isAdmin = accessLevel === 2;
-
-    if (!isSelf && !isAdmin) {
-      return ErrorHandler(res, 403, 'Forbidden: Insufficient permissions');
-    }
-
-    if (req.file) {
-      cleanData.certificationImage = `/uploads/certifications/${req.file.filename}`;
-    }
-
-    const searchFilter = certId ? { _id: certId, userId: targetUserId } : { _id: uuidv4() };
-
-    const updatedCertification = await Certification.findOneAndUpdate(
-      searchFilter,
-      { 
-        $set: { 
-          ...cleanData, 
-          userId: targetUserId 
-        } 
-      },
-      { 
-        new: true, 
-        runValidators: true,
-        upsert: true,
-        setDefaultsOnInsert: true 
-      }
-    );
-
-    return SuccessHandler(
-      res, 
-      updatedCertification, 
-      'Certification successfully saved', 
-      200
-    );
-
-  } catch (e) {
-    console.error("Error in updateCertification:", e);
-    return ErrorHandler(res, 500, "INTERNAL SERVER ERROR: Save Certification");
-  }
-};
 
 export const updateExpriences = async (req, res) => {
   const targetUserId = req.params.id;
@@ -522,3 +458,136 @@ export const deleteUserExpriences = async (req, res) => {
     return ErrorHandler(res, 500, 'INTERNAL SERVER ERROR');
   }
 };
+
+
+
+export const getUserCertificate = async (req,res) => {
+  const { id: userId } = req.params;
+  try{
+
+    if (!userId || userId === 'undefined') {
+      return ErrorHandler(res, 400, "User does not exist!");
+    }
+
+    const data = await Certification.find({ userId: userId });
+    
+    if(!data) {
+      return ErrorHandler(res,404,"Data is not found")
+    }
+
+    return SuccessHandler(res,data,"Successfully get user certifacte", 200 )
+
+
+  }catch(e){
+    console.error('Server Failed', e)
+    return ErrorHandler(res,500,"INTERNAL SERVER ERROR")
+  }
+}
+
+
+// POST /add-user-certification/:id
+export const addCertification = async (req, res) => {
+  const targetUserId = req.params.id;
+  const cleanData = cleanseData(req.body);
+  const authId = req.user._id.toString();
+
+  try {
+    if (!targetUserId) {
+      return ErrorHandler(res, 400, "User ID is required");
+    }
+
+    const isSelf = String(targetUserId) === authId;
+    const isAdmin = req.user.accessLevel === 2;
+
+    if (!isSelf && !isAdmin) {
+      return ErrorHandler(res, 403, "Forbidden: Insufficient permissions");
+    }
+
+    if (req.file) {
+      cleanData.certificationImage = `/uploads/certifications/${req.file.filename}`;
+    }
+
+    const certification = await Certification.create({
+      ...cleanData,
+      userId: targetUserId,
+    });
+
+    return SuccessHandler(res, certification, "Certification successfully added", 201);
+  } catch (e) {
+    console.error("Error in addCertification:", e);
+    if (e.name === "ValidationError") return ErrorHandler(res, 400, e.message);
+    return ErrorHandler(res, 500, "INTERNAL SERVER ERROR: Add Certification");
+  }
+};
+
+// PUT /update-user-certification/:id/:certId
+export const updateCertification = async (req, res) => {
+  const { id: targetUserId, certId } = req.params;
+  const cleanData = cleanseData(req.body);
+  const authId = req.user._id.toString();
+
+  try {
+    if (!targetUserId || !certId) {
+      return ErrorHandler(res, 400, "User ID and certification ID are required");
+    }
+
+    const isSelf = String(targetUserId) === authId;
+    const isAdmin = req.user.accessLevel === 2;
+
+    if (!isSelf && !isAdmin) {
+      return ErrorHandler(res, 403, "Forbidden: Insufficient permissions");
+    }
+
+    if (req.file) {
+      cleanData.certificationImage = `/uploads/certifications/${req.file.filename}`;
+    }
+
+    const updated = await Certification.findOneAndReplace(
+      { _id: certId, userId: targetUserId },
+      { $set: cleanData },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return ErrorHandler(res, 404, "Certification not found");
+    }
+
+    return SuccessHandler(res, updated, "Certification successfully updated", 200);
+  } catch (e) {
+    console.error("Error in updateCertification:", e);
+    if (e.name === "ValidationError") return ErrorHandler(res, 400, e.message);
+    return ErrorHandler(res, 500, "INTERNAL SERVER ERROR: Update Certification");
+  }
+};
+
+
+export const deleteCertificate = async (req,res)  => {
+    const {certId: certId} = req.params
+    const   userId = req.user._id
+    const isAdmin = req.user.accessLevel === 2
+
+    try{
+
+      if(!userId){
+        return ErrorHandler(res,400,"user is not exists")
+      } 
+
+      if(!certId){
+        return ErrorHandler(res,400,"Certification Id is required in parameters")
+      }
+
+      const data = isAdmin ? {_id: certId} : {_id: certId, userId: userId}
+      
+      const deletedCertification = await Certification.findOneAndDelete(data)
+
+      if(deletedCertification){
+        return ErrorHandler(res,400,"Certification failed to delete")
+      }
+
+      return SuccessHandler(res,deletedCertification,200)
+
+  }catch(e){
+    console.error("INTERNAL SERVER ERROR", e)
+    return ErrorHandler(res,500,"INTERNAL SERVER ERROR")
+  }
+}
