@@ -36,7 +36,7 @@ export const Navbar = ({ user, loading, onLogout }: NavbarProps) => {
     ? `${user.firstName} ${user.lastName || ''}`.trim() 
     : user?.email;
 
-  const userId = user?._id || (user as any)?.id;
+  const userId = user?._id || (user as any)?.id ;
 
   const handleLogout = () => {
     setDropdownOpen(false);
@@ -99,7 +99,8 @@ export const Navbar = ({ user, loading, onLogout }: NavbarProps) => {
 
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-50">
-                  <NavLink
+                  {userId && (
+                    <NavLink
                     to={`/profile/${userId}`}
                     onClick={() => setDropdownOpen(false)}
                     className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-blue-600 font-medium transition cursor-pointer flex items-center gap-2"
@@ -109,6 +110,7 @@ export const Navbar = ({ user, loading, onLogout }: NavbarProps) => {
                     </svg>
                     Profile
                   </NavLink>
+                  )}
 
                   <hr className="border-slate-100 my-1" />
 

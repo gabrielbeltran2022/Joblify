@@ -26,56 +26,51 @@ const LayoutNavbar = () => {
   );
 };
 
-    const ProfileRoute = () => {
-      const { user: loggedInUser, setUser, loading, logout } = useUserContext();
-      const { userId } = useParams();
+const ProfileRoute = () => {
+  const { user: loggedInUser, setUser, loading, logout } = useUserContext();
+  const { userId } = useParams();
 
-      const [viewedUser, setViewedUser] = useState<any>(null);
-      const [fetchingProfile, setFetchingProfile] = useState<boolean>(false);
+  const [viewedUser, setViewedUser] = useState<any>(null);
+  const [fetchingProfile, setFetchingProfile] = useState(true);
 
-      useEffect(() => {
-        // If there's no userId in the URL, or it matches the logged-in user, use context
-        if (!userId || userId === loggedInUser?._id) {
-          setViewedUser(loggedInUser);
-          setFetchingProfile(false);
-          return;
-        }
+  const isOwn = !!loggedInUser && (!userId || userId === loggedInUser._id);
 
-        // Otherwise, fetch the specific applicant/user profile
-        const fetchTargetUser = async () => {
-          try {
-            setFetchingProfile(true);
-            const data = await getUserInfo(userId); // Fetches the specific user by ID
-            setViewedUser(data);
-          } catch (err) {
-            console.error("Failed to fetch user profile:", err);
-          } finally {
-            setFetchingProfile(false);
-          }
-        };
+  useEffect(() => {
+    if (isOwn) {
+      setViewedUser(loggedInUser);
+      setFetchingProfile(false);
+      return;
+    }
+    if (!userId) return;
 
-        fetchTargetUser();
-      }, [userId, loggedInUser]);
+    let cancelled = false;
+    setFetchingProfile(true);
+    getUserInfo(userId)
+      .then((data) => { if (!cancelled) setViewedUser(data); })
+      .catch((err) => { console.error("Failed to fetch user profile:", err); if (!cancelled) setViewedUser(null); })
+      .finally(() => { if (!cancelled) setFetchingProfile(false); });
 
-      const currentUserMeta = loggedInUser ? {
-        id: loggedInUser._id,
-        accessLevel: loggedInUser.accessLevel ?? 0
-      } : null;
+    return () => { cancelled = true; };
+  }, [userId, isOwn, loggedInUser]);
 
-      return (
-        <UserProfile 
-          user={viewedUser} 
-          currentUser={currentUserMeta}
-          loading={loading || fetchingProfile} 
-          onLogout={logout} 
-          onEditProfile={(updated) => {
-            if (loggedInUser && (!userId || userId === loggedInUser._id)) {
-              setUser({ ...loggedInUser, ...updated });
-            }
-          }} 
-        />
-      );
-    };
+  const currentUserMeta = loggedInUser
+    ? { id: loggedInUser._id, accessLevel: loggedInUser.accessLevel ?? 0 }
+    : null;
+
+  return (
+    <UserProfile
+      user={viewedUser}
+      currentUser={currentUserMeta}
+      loading={fetchingProfile || (loading && !userId)}
+      onLogout={logout}
+      onEditProfile={(updated) => {
+        if (loggedInUser && isOwn) setUser({ ...loggedInUser, ...updated });
+      }}
+    />
+  );
+};
+
+
 function App() {
   return (
     <UserProvider>

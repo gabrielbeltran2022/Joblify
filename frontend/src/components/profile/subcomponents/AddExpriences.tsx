@@ -34,7 +34,9 @@ const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
   e.preventDefault();
   setErrorMessage(null);
 
-  const userId = user?._id 
+  const userId = user?._id
+  const expId = formData._id
+  
   if (!userId) {
     setErrorMessage("User ID is missing. Cannot save experience.");
     return;

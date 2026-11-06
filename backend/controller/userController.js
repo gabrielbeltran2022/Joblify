@@ -46,6 +46,17 @@ export const getUserProfile = async (req, res) => {
     }
 };
 
+export const getMe = async (req, res) => {
+  try {
+    const id = req.user?.id || req.userId; 
+    const user = await userModel.findById(id);
+    if (!user) return ErrorHandler(res, 404, "User does not exist");
+    return SuccessHandler(res, { user }, "Successfully fetched current user", 200);
+  } catch (e) {
+    return ErrorHandler(res, 500, "INTERNAL SERVER ERROR GET ME");
+  }
+};
+
 export const createUser = async (req, res) => {
     const userData = req.body 
     const data = cleanseData(userData)
@@ -187,7 +198,7 @@ export const requestEmailVerification = async (req, res) => {
         const code = generateAlphanumericCode(6);
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000); 
 
-        await verificationModel.findOneAndReplace(
+        await verificationModel.findOneAndUpdate(
             { email },
             { email, code, expiresAt }, 
             { upsert: true, returnDocument: 'after' }
@@ -334,7 +345,7 @@ export const updateEducation = async (req,res) => {
 }
 
 
-export const updateExpriences = async (req, res) => {
+export const addExpriences = async (req, res) => {
   const targetUserId = req.params.id;
   const cleanData = req.body; 
   const authUser = req.user;
@@ -344,14 +355,15 @@ export const updateExpriences = async (req, res) => {
     return ErrorHandler(res, 401, 'Unauthorized: User authentication context missing');
   }
 
-
   try {
     const userInDb = await userModel.findById(authId);
     if (!userInDb) {
       return ErrorHandler(res, 404, 'Authenticated user not found in database');
     }
 
+   
     const isSelf = targetUserId === authId;
+
     const isAdmin = userInDb.accessLevel === 2;
 
     if (!isSelf && !isAdmin) {
@@ -391,6 +403,49 @@ export const updateExpriences = async (req, res) => {
     return SuccessHandler(res, updatedExperience, 'Experience updated successfully', 200);
 
   } catch (e) {
+    console.error('Failed Request', e);
+    return ErrorHandler(res, 500, 'INTERNAL SERVER ERROR');
+  }
+};
+
+export const updateExpriences = async (req, res) => {
+   const { id: targetUserId, expId } = req.params;
+  const cleanData = req.body; 
+  const authUser = req.user;
+  const authId = (authUser?._id || authUser?.id)?.toString();
+
+  if (!authUser || !authId) {
+    return ErrorHandler(res, 401, 'Unauthorized: User authentication context missing');
+  }
+  console.log(expId)
+  try {
+    const userInDb = await userModel.findById(authId);
+
+    if (!userInDb) {
+      return ErrorHandler(res, 404, 'Authenticated user not found in database');
+    }
+   
+    const isSelf = targetUserId === authId;
+
+    const isAdmin = userInDb.accessLevel === 2;
+
+    if (!isSelf && !isAdmin) {
+      return ErrorHandler(res, 403, 'Forbidden: Insufficient permissions');
+    }
+     const updated = await Experience.findOneAndUpdate(
+      { _id: expId, userId: targetUserId },
+      { $set: cleanData },
+      { new: true, runValidators: true }
+    );
+  
+    if (!updated) {
+      return ErrorHandler(res, 404, "Expriences not found");
+    }
+
+      return SuccessHandler(res, updated, 'Experience added successfully', 201);
+    }
+  
+    catch (e) {
     console.error('Failed Request', e);
     return ErrorHandler(res, 500, 'INTERNAL SERVER ERROR');
   }
@@ -542,12 +597,13 @@ export const updateCertification = async (req, res) => {
       cleanData.certificationImage = `/uploads/certifications/${req.file.filename}`;
     }
 
-    const updated = await Certification.findOneAndReplace(
+    const updated = await Certification.findOneAndUpdate(
       { _id: certId, userId: targetUserId },
       { $set: cleanData },
       { new: true, runValidators: true }
     );
-
+    
+   
     if (!updated) {
       return ErrorHandler(res, 404, "Certification not found");
     }

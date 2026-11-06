@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import {type User, getUserInfo } from "../api/userApi";
-import { refreshAccessToken } from "../api/auth"; 
+import { type User, getCurrentUser } from "../api/userApi";
+import { ApiError, API_URL } from "../api/http";
 
 interface UserContextType {
   user: User | null;
@@ -19,9 +19,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem("userId");
+
+    fetch(`${API_URL}/logout`, { method: "POST", credentials: "include" }).catch(() => {});
   };
 
   useEffect(() => {
+    let cancelled = false;
+
     const restoreSession = async () => {
       const userId = localStorage.getItem("userId");
 
@@ -30,30 +34,28 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
         return;
       }
-      setLoading(true);
-        try {  
-        const userData = await getUserInfo(userId);
-        setUser(userData);
-        console.log(userData)
 
-      } catch (error) {
-          try {
+      try {
 
-            await refreshAccessToken();
-            const userData = await getUserInfo(userId);
-            console.log(userData)
-            setUser(userData);
+        const me = await getCurrentUser();
+        if (!cancelled) setUser(me);
+      } catch (err) {
 
-          } catch (refreshError) {
-            setUser(null);
-              localStorage.removeItem("userId");
-          }
-    } finally {
-      setLoading(false);
-    }
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          localStorage.removeItem("userId");
+          if (!cancelled) setUser(null);
+        } else {
+          console.error("Session restore failed (not an auth error):", err);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     };
 
     restoreSession();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

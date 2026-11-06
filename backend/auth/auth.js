@@ -44,14 +44,18 @@ export const authenticationUser = (...credentials) => {
 
 
             const targetUserId = req.user.id;
+            
 
             const isOwnAccount = targetUserId && targetUserId.toString() === existingUser._id.toString();
-        
+            
+            
             if (credentials.length > 0) {
                 const userLevel = existingUser.accessLevel;
                 const hasPermission = credentials.includes(userLevel) || 
                                       credentials.some(level => userLevel >= level);
-
+                // console.log(userLevel)
+                // console.log(hasPermission)
+                // console.log(isOwnAccount)
                 if (!hasPermission && !isOwnAccount) {
                     return ErrorHandler(res, 403, "Forbidden: Insufficient permissions");
                 }

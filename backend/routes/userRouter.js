@@ -1,5 +1,5 @@
 import express from 'express';
-import { verifyUser,requestEmailVerification, getUser, login, logoutUser, updateUser, getUserProfile,updateEducation, updateCertification, updateExpriences, getUserExpriences,getUserCertificate,deleteCertificate,addCertification } from '../controller/userController.js';
+import { verifyUser,requestEmailVerification, getUser, login, logoutUser, updateUser, getUserProfile,updateEducation, updateCertification,addExpriences, updateExpriences, getUserExpriences,getUserCertificate,deleteCertificate,addCertification,getMe } from '../controller/userController.js';
 import { validateUpdateUser,validateUpdateCertification,validateUpdateEducation,validateUpdateExperience,validateAddCertification } from '../services/dataValidator.js';
 import { authenticationUser } from '../auth/auth.js';
 import {uploadProfileImage,uploadCertificationImage} from '../services/upload.js'
@@ -19,8 +19,11 @@ userRoute.get('/get-user-profile/:id', getUserProfile);
 
 userRoute.put('/update-user-education/:id', authenticationUser(2), validateUpdateEducation, updateEducation);
 
+userRoute.get('/me', authenticationUser(2), getMe);
 
-userRoute.post('/update-user-expriences/:id', authenticationUser(2), validateUpdateExperience, updateExpriences)
+userRoute.post('/add-user-expriences/:id', authenticationUser(2), validateUpdateExperience, addExpriences)
+
+userRoute.put('/update-user-expriences/:id/:expId', authenticationUser(2), validateUpdateExperience, updateExpriences)
 
 userRoute.get('/user-experiences/:id', getUserExpriences)
 
