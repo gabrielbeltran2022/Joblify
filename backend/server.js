@@ -3,7 +3,7 @@ import { connectDb } from './database/db.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import 'dotenv/config';
-
+import path from "path";
 import userRoute from './routes/userRouter.js';
 import authRoute from './routes/authRouter.js';
 
@@ -16,6 +16,7 @@ app.use(cors({
     allowedHeaders: ['Content-type', 'Authorization']
 }));
 app.use(express.json());
+app.use(express.static(path.join(process.cwd(), "public"))); 
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 

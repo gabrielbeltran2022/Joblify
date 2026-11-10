@@ -13,7 +13,7 @@ userRoute.post('/send-code', requestEmailVerification);
 
 userRoute.post('/verify-signup', verifyUser);
 
-userRoute.put('/update-user/:id', authenticationUser(2), uploadProfileImage.single('profilePicture'), validateUpdateUser, updateUser);
+userRoute.put('/update-user/:id', authenticationUser(2), uploadProfileImage.single('profiles'), validateUpdateUser, updateUser);
 
 userRoute.get('/get-user-profile/:id', getUserProfile);
 
@@ -36,7 +36,7 @@ userRoute.post(
   "/add-user-certification/:id",
   authenticationUser(2),
   uploadCertificationImage.single("certificationImage"),
-  validateAddCertification,
+  // validateAddCertification,
   addCertification
 );
  
@@ -44,7 +44,7 @@ userRoute.put(
   "/update-user-certification/:id/:certId",
   authenticationUser(2),
   uploadCertificationImage.single("certificationImage"),
-  validateUpdateCertification,
+  // validateUpdateCertification,
   updateCertification
 );
 

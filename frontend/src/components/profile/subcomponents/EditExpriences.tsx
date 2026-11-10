@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import type { UserExperience } from '../../../api/userApi';
+import type { User, UserExperience } from '../../../api/userApi';
+import { updateExprience } from '../../../api/userApi';
+
 
 interface EditExperiencesProps {
+   user: User | null;
   experience: UserExperience;
   onClose: () => void;
   onSave: (updated: UserExperience) => void;
@@ -18,9 +21,10 @@ const formatDateForInput = (dateVal: Date | string | null | undefined): string =
   return '';
 };
 
-export const EditExperiences = ({ experience, onClose, onSave }: EditExperiencesProps) => {
+export const EditExperiences = ({ user,experience, onClose, onSave }: EditExperiencesProps) => {
   const [formData, setFormData] = useState<UserExperience>({ ...experience });
   const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -29,9 +33,41 @@ export const EditExperiences = ({ experience, onClose, onSave }: EditExperiences
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.SubmitEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onSave(formData);
+    setErrorMessage(null);
+    
+    const userId = user?._id
+    const expId = formData._id;
+    if (!expId || !userId) {
+      setErrorMessage("Missing experience ID.");
+      return;
+    }
+  
+    console.log({ userId, expId, formData });
+    try{
+
+      setIsSubmitting(true);
+      const payload: UserExperience = {...formData}
+
+      
+      if(payload.isCurrent){
+        delete payload.endDate;
+      }else if(!payload.endDate){
+        delete payload.endDate
+      }
+      
+      const saveExprience = await updateExprience(userId, expId, payload)
+      
+      if(onSave){
+        console.log("testing")
+        onSave(saveExprience)
+      }
+
+      onClose();
+    }catch(err: any){
+     setErrorMessage(err?.response?.data?.message || err?.message || "Failed to save experience. Please try again.");
+    }
   };
 
   return (

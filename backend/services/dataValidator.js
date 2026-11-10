@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { ErrorHandler } from '../utils/Utilities.js';
 import { cleanseData } from './dataSanitize.js';
+import fs from "fs"
+
+const removeUploadedFile = (req) => {
+  if (req.file) fs.unlink(req.file.path, () => {});
+};
+
 
 /* ==========================================================================
    USER VALIDATION
@@ -154,10 +160,13 @@ export const addCertificationSchema = z
   );
 
 export const validateAddCertification = (req, res, next) => {
-  const cleansedBody = cleanseData(req.body);
-  const result = addCertificationSchema.safeParse(cleansedBody);
+    const cleansedBody = cleanseData(req.body ?? {});
+    delete cleansedBody.certificationImage; 
+ 
+  const result = addCertificationSchema.safeParse(cleansedBody)
 
   if (!result.success) {
+    removeUploadedFile(req)
     const errorMessage = result.error.issues[0].message;
     return ErrorHandler(res, 400, errorMessage);
   }
@@ -195,10 +204,13 @@ export const updateCertificationSchema = z
   );
 
 export const validateUpdateCertification = (req, res, next) => {
-  const cleansedBody = cleanseData(req.body);
+  const cleansedBody = cleanseData(req.body ?? {});
+
+  delete cleansedBody.certificationImage
   const result = updateCertificationSchema.safeParse(cleansedBody);
 
   if (!result.success) {
+    removeUploadedFile(req)
     const errorMessage = result.error.issues[0].message;
     return ErrorHandler(res, 400, errorMessage);
   }

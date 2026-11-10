@@ -70,9 +70,13 @@ const calculateAge = (dob?: string | Date | null): number | null => {
 
 // Backend stores relative paths like /uploads/certifications/x.png
 const getImageUrl = (path?: string | null): string => {
+console.log("API_URL:", API_URL, "path:", path);
+  console.log("Combined:", `${API_URL}${path}`);
   if (!path) return "";
   return path.startsWith("http") ? path : `${API_URL}${path}`;
 };
+
+
 
 const cleanPart = (value?: string | null) => (value && value !== "N/A" ? value : "");
 
@@ -352,6 +356,7 @@ export const UserProfile = ({
   };
 
   const handleSaveEditedExperience = (updated: UserExperience) => {
+    
     setExperiences((prev) => prev.map((item) => (item._id === updated._id ? updated : item)));
     handleCloseEditExperience();
   };
@@ -676,6 +681,7 @@ export const UserProfile = ({
 
       {canEdit && isEditExpOpen && selectedExperience && (
         <EditExperiences
+          user={user}
           experience={selectedExperience}
           onClose={handleCloseEditExperience}
           onSave={handleSaveEditedExperience}

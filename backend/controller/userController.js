@@ -9,6 +9,7 @@ import { generateAccessToken, generateRefreshToken } from "../utils/tokenUtils.j
 import { generateAlphanumericCode } from '../utils/generateCodeVerification.js';
 import {sendVerificationEmail} from '../services/emailSender.js'
 import 'dotenv/config';
+import fs from "fs";
 
 
 
@@ -546,6 +547,10 @@ export const addCertification = async (req, res) => {
   const cleanData = cleanseData(req.body);
   const authId = req.user._id.toString();
 
+
+  console.log(cleanData)
+  console.log(authId)
+
   try {
     if (!targetUserId) {
       return ErrorHandler(res, 400, "User ID is required");
@@ -555,6 +560,7 @@ export const addCertification = async (req, res) => {
     const isAdmin = req.user.accessLevel === 2;
 
     if (!isSelf && !isAdmin) {
+      if(!req.file) fs.unlink(req.file.path,() => {})
       return ErrorHandler(res, 403, "Forbidden: Insufficient permissions");
     }
 

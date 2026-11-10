@@ -213,7 +213,7 @@ export const updateUserProfile = async (userId: string, updatedUser: Partial<Use
 };
 
 export const addExprincesDetail = async (userId: string, exp: UserExperience): Promise<UserExperience> => {
-  const res = await apiFetch(`/update-user-expriences/${userId}`, {
+  const res = await apiFetch(`/add-user-expriences/${userId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(exp),
@@ -222,6 +222,19 @@ export const addExprincesDetail = async (userId: string, exp: UserExperience): P
   const result = await res.json();
   return result.data ?? result;
 };
+
+
+export const updateExprience = async (userId: string, expId: string, exp: UserExperience): Promise<UserExperience> => {
+    const res = await apiFetch(`/update-user-expriences/${userId}/${expId}`,{
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(exp)
+    })
+
+    if(!res.ok) throw await readError(res,"Failed to update user expriences")
+    const result = await res.json();
+    return result.data ?? result
+}
 
 export const addCertificateDetail = async (userId: string, data: CertInput): Promise<UserCertificate> => {
   const res = await apiFetch(`/add-user-certification/${userId}`, 
