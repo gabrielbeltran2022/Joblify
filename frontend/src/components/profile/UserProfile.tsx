@@ -5,9 +5,12 @@ import {
   getUserExperiences,
   getUserCertificate,
   deleteCertificateDetail,
+  deleteExperience,
+  getUserEducation,
   type User,
   type UserExperience,
   type UserCertificate,
+  type UserEducation,
 } from "../../api/userApi";
 
 import defaultProfile from "../../assets/default_profile.png";
@@ -17,6 +20,7 @@ import { EditProfile } from "./subcomponents/EditProfile";
 import { AddExpriences } from "./subcomponents/AddExpriences";
 import { EditExperiences } from "./subcomponents/EditExpriences";
 import { AddCertificate } from "./subcomponents/AddCertificate";
+import { AddEducation } from "./subcomponents/AddEducation"
 
 /* -------------------------------------------------------------------------- */
 /* Types & constants                                                          */
@@ -34,6 +38,7 @@ interface UserProfileProps {
 const API_URL = "http://localhost:3000";
 const EXP_PER_PAGE = 3;
 const CERT_PER_PAGE = 2;
+const EDU_PER_PAGE = 3
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -70,7 +75,7 @@ const calculateAge = (dob?: string | Date | null): number | null => {
 
 // Backend stores relative paths like /uploads/certifications/x.png
 const getImageUrl = (path?: string | null): string => {
-console.log("API_URL:", API_URL, "path:", path);
+  console.log("API_URL:", API_URL, "path:", path);
   console.log("Combined:", `${API_URL}${path}`);
   if (!path) return "";
   return path.startsWith("http") ? path : `${API_URL}${path}`;
@@ -120,17 +125,24 @@ const SectionHeader = ({
   title,
   count,
   action,
+  underline = true
 }: {
   title: string;
-  count: number;
+  count?: number;
   action?: React.ReactNode;
+  underline?: boolean;
 }) => (
-  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+  <div
+    className={`flex items-center justify-between pb-2 ${underline ? "border-b border-gray-100" : ""
+      }`}
+  >
     <div className="flex items-center gap-2">
       <h2 className="text-xl font-bold text-gray-900">{title}</h2>
-      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full font-medium">
-        {count} Total
-      </span>
+      {count !== undefined && (
+        <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full font-medium">
+          {count} Total
+        </span>
+      )}
     </div>
     {action}
   </div>
@@ -148,10 +160,9 @@ const Pager = ({
   if (totalPages <= 1) return null;
 
   const btn = (disabled: boolean) =>
-    `px-3 py-1 rounded text-xs font-medium transition ${
-      disabled
-        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-        : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+    `px-3 py-1 rounded text-xs font-medium transition ${disabled
+      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
     }`;
 
   return (
@@ -199,6 +210,8 @@ export const UserProfile = ({
   const [isAddExperience, setIsAddExperience] = useState(false);
   const [isEditExpOpen, setIsEditExpOpen] = useState(false);
   const [selectedExperience, setSelectedExperience] = useState<UserExperience | null>(null);
+  const [isOpenEducation, setIsOpenEducation] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   // The same modal handles adding (selectedCertificate = null) and editing
   const [isCertificateOpen, setIsCertificateOpen] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState<UserCertificate | null>(null);
@@ -207,12 +220,15 @@ export const UserProfile = ({
   // Data state
   const [experiences, setExperiences] = useState<UserExperience[]>([]);
   const [certificates, setCertificates] = useState<UserCertificate[]>([]);
+  const [educations, setEducations] = useState<UserEducation[]>([]);
   const [loadingExp, setLoadingExp] = useState(false);
   const [loadingCert, setLoadingCert] = useState(false);
+  const [loadingEdu, setLoadingEdu] = useState(false);
 
   // Pagination state
   const [expPage, setExpPage] = useState(1);
   const [certPage, setCertPage] = useState(1);
+  const [eduPage, setEduPage] = useState(1);
 
   const targetUserId = user?._id;
 
@@ -236,11 +252,12 @@ export const UserProfile = ({
     const load = async () => {
       setLoadingExp(true);
       setLoadingCert(true);
+      setLoadingEdu(true);
 
-      // allSettled: one failing request must not hide the other list
-      const [expRes, certRes] = await Promise.allSettled([
+      const [expRes, certRes, eduRes] = await Promise.allSettled([
         getUserExperiences(targetUserId),
         getUserCertificate(targetUserId),
+        getUserEducation(targetUserId),
       ]);
 
       if (cancelled) return;
@@ -257,8 +274,15 @@ export const UserProfile = ({
         console.error("Failed to load certificates:", certRes.reason);
       }
 
+      if (eduRes.status === "fulfilled") {
+        setEducations(Array.isArray(eduRes.value) ? eduRes.value : []);
+      } else {
+        console.error("Failed to load education:", eduRes.reason);
+      }
+
       setLoadingExp(false);
       setLoadingCert(false);
+      setLoadingEdu(false);
     };
 
     load();
@@ -273,7 +297,9 @@ export const UserProfile = ({
     isAddExperience ||
     isEditExpOpen ||
     isCertificateOpen ||
-    Boolean(selectedCertImage);
+    Boolean(selectedCertImage) ||
+    isOpenEducation
+    ;
 
   useEffect(() => {
     document.body.style.overflow = anyModalOpen ? "hidden" : "unset";
@@ -289,25 +315,25 @@ export const UserProfile = ({
   const fullName =
     user?.firstName || user?.lastName
       ? [
-          user?.firstName,
-          cleanPart(userRecord.middleName),
-          user?.lastName,
-          cleanPart(userRecord.suffix),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .replace(/\s+/g, " ")
-          .trim()
+        user?.firstName,
+        cleanPart(userRecord.middleName),
+        user?.lastName,
+        cleanPart(userRecord.suffix),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim()
       : null;
 
-  const profession: string | null = userRecord.profession  || null;
-  const jobtitle: string | null =userRecord.jobtitle || null 
-  const education: string | null = userRecord.education || null;
+  const profession: string | null = userRecord.profession || null;
+  const jobtitle: string | null = userRecord.jobtitle || null
   const age = calculateAge(userRecord.dateOfBirth);
   const profileImageSrc = user?.profilePicture?.trim() ? user.profilePicture : defaultProfile;
 
   const expList: any[] = experiences.length > 0 ? experiences : userRecord.experiences || [];
   const certList: any[] = certificates.length > 0 ? certificates : userRecord.certificates || [];
+  const educationList: any[] = educations.length > 0 ? educations : userRecord.education || [];
 
   const sortedExperiences = useMemo(() => {
     return [...expList].sort((a, b) => {
@@ -319,6 +345,11 @@ export const UserProfile = ({
     });
   }, [expList]);
 
+  const sortedEducation = useMemo(() => {
+    return [...educationList].sort((a, b) =>
+      new Date(b.startDate || 0).getTime() - new Date(a.startDate || 0).getTime())
+  }, [educationList])
+
   const totalExpPages = Math.ceil(sortedExperiences.length / EXP_PER_PAGE);
   const visibleExperiences = sortedExperiences.slice(
     (expPage - 1) * EXP_PER_PAGE,
@@ -329,6 +360,13 @@ export const UserProfile = ({
   const visibleCertificates = certList.slice(
     (certPage - 1) * CERT_PER_PAGE,
     certPage * CERT_PER_PAGE
+  );
+
+
+  const totalEduPages = Math.ceil(sortedEducation.length / EDU_PER_PAGE);
+  const visibleEducation = sortedEducation.slice(
+    (eduPage - 1) * EDU_PER_PAGE,
+    eduPage * EDU_PER_PAGE
   );
 
   /* -------------------------------- Handlers ------------------------------ */
@@ -356,11 +394,25 @@ export const UserProfile = ({
   };
 
   const handleSaveEditedExperience = (updated: UserExperience) => {
-    
+
     setExperiences((prev) => prev.map((item) => (item._id === updated._id ? updated : item)));
     handleCloseEditExperience();
   };
 
+  const handleDeleteExperiences = async (expId?: string) => {
+    const userId = user?._id
+    if (!userId || !expId) return;
+
+    try {
+      await deleteExperience(userId, expId);
+      setExperiences((prev) => prev.filter((exp) => (exp._id) !== expId));
+
+    } catch (error) {
+      console.error("Delete failed:", error);
+    } finally {
+      setDeletingId(null);
+    }
+  };
   // Certificates
   const handleOpenAddCertificate = () => {
     setSelectedCertificate(null);
@@ -401,6 +453,12 @@ export const UserProfile = ({
       console.error("Failed to delete certificate:", err);
     }
   };
+
+  const handleSaveEducation = (newEdu: any) => {
+    if (newEdu) setEducations((prev) => [newEdu, ...prev])
+    setIsOpenEducation(false)
+  }
+
 
   /* --------------------------------- Render ------------------------------- */
 
@@ -495,14 +553,47 @@ export const UserProfile = ({
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 border-t border-gray-200 pt-4">
-              <h2 className="text-lg font-bold text-gray-900">Education</h2>
-              <div className="flex items-center gap-3 text-sm">
-                <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-600">
-                  🎓
-                </div>
-                <span className="font-medium text-gray-800">{education || "No data"}</span>
-              </div>
+            <div className="flex flex-col gap-3 border-t border-gray-200 pt-4 flex-1">
+              <section className="flex flex-col gap-4 flex-1">
+                <SectionHeader
+                  title="Education"
+                  underline={false}
+                  action={
+                    canEdit && (
+                      <AddButton label="Add Education" onClick={() => setIsOpenEducation(true)} />
+                    )
+                  }
+                />
+
+                {loadingEdu ? (
+                  <LoadingState>Loading education...</LoadingState>
+                ) : visibleEducation.length > 0 ? (
+                  <>
+                    <div className="flex flex-col gap-4 ">
+                      {visibleEducation.map((edu) => (
+                        <div key={edu._id || edu.id} className="flex items-center gap-3 text-sm pb-6">
+                          <div className="w-9 h-9 shrink-0 bg-gray-100 rounded-full flex items-center justify-center text-gray-600">
+                            🎓
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-gray-800">{edu.schoolName || "No data"}</span>
+                            {edu.degree && <span className="text-xs text-gray-500">{edu.degree}</span>}
+                            <span className="text-xs text-gray-400">
+                              {formatDateRange(edu.startDate, edu.endDate)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-auto">
+                      <Pager page={eduPage} totalPages={totalEduPages} onChange={setEduPage} />
+                    </div>
+                  </>
+                ) : (
+                  <EmptyState />
+                )}
+              </section>
             </div>
           </div>
 
@@ -524,30 +615,56 @@ export const UserProfile = ({
                 {loadingExp ? (
                   <LoadingState>Loading experiences...</LoadingState>
                 ) : visibleExperiences.length > 0 ? (
-                  visibleExperiences.map((exp) => (
-                    <button
-                      key={exp._id || exp.id}
-                      type="button"
-                      onClick={() => handleOpenEditExperience(exp)}
-                      disabled={!canEdit}
-                      className={`w-full text-left p-4 border border-gray-200 rounded-lg bg-gray-50 flex flex-col gap-1 transition focus:outline-none ${
-                        canEdit
+                  visibleExperiences.map((exp) => {
+                    const expId = exp._id || exp.id;
+
+                    return (
+
+                      <div
+                        key={expId}
+                        role={canEdit ? "button" : undefined}
+                        tabIndex={canEdit ? 0 : undefined}
+                        onClick={() => canEdit && handleOpenEditExperience(exp)}
+                        onKeyDown={(e) => {
+                          if (canEdit && (e.key === "Enter" || e.key === " ")) {
+                            e.preventDefault();
+                            handleOpenEditExperience(exp);
+                          }
+                        }}
+                        className={`w-full text-left p-4 border border-gray-200 rounded-lg bg-gray-50 flex flex-col gap-1 transition focus:outline-none ${canEdit
                           ? "hover:shadow-sm hover:border-blue-300 cursor-pointer"
                           : "cursor-default"
-                      }`}
-                    >
-                      <div className="flex justify-between items-start w-full">
-                        <h3 className="font-semibold text-gray-900">{exp.jobtitle || exp.role}</h3>
-                        <span className="text-xs text-gray-500 font-medium">
-                          {exp.period || formatDateRange(exp.startDate, exp.endDate, exp.isCurrent)}
-                        </span>
+                          }`}
+                      >
+                        <div className="flex justify-between items-start w-full">
+                          <h3 className="font-semibold text-gray-900">{exp.jobtitle || exp.role}</h3>
+                          <span className="text-xs text-gray-500 font-medium">
+                            {exp.period || formatDateRange(exp.startDate, exp.endDate, exp.isCurrent)}
+                          </span>
+                        </div>
+
+                        <p className="text-sm text-blue-600 font-medium">{exp.company}</p>
+
+                        {exp.description && (
+                          <p className="text-sm text-gray-600 mt-1">{exp.description}</p>
+                        )}
+
+                        {canEdit && (
+                          <button
+                            type="button"
+
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteExperiences(expId);
+                            }}
+                            className="self-end mt-2 text-sm text-red-600 cursor-pointer hover:text-red-700 hover:underline"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
-                      <p className="text-sm text-blue-600 font-medium">{exp.company}</p>
-                      {exp.description && (
-                        <p className="text-sm text-gray-600 mt-1">{exp.description}</p>
-                      )}
-                    </button>
-                  ))
+                    );
+                  })
                 ) : (
                   <EmptyState />
                 )}
@@ -696,6 +813,16 @@ export const UserProfile = ({
           onSave={handleSaveCertificate}
         />
       )}
+
+      {canEdit && isOpenEducation && (
+        <AddEducation
+          user={user}
+          onClose={() => setIsOpenEducation(false)}
+          onSave={handleSaveEducation}
+        />
+      )}
+
+      {deletingId && <Loading isLoading={true} />}
     </div>
   );
 };

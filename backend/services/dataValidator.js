@@ -131,6 +131,45 @@ export const validateUpdateEducation = (req, res, next) => {
   next();
 };
 
+
+export const addEducationSchema = z
+  .object({
+    degree: z.string().trim().min(1, 'Degree is required'),
+    schoolName: z.string().trim().min(1, 'School name is required'),
+    fieldStudy: z.string().trim().min(1, 'Field of study is required'),
+    educationLevel: z.string().trim().min(1, 'Education level is required'),
+    startDate: z.coerce.date({ invalid_type_error: 'Invalid start date format' }).optional(),
+    endDate: z.coerce.date({ invalid_type_error: 'Invalid end date format' }).optional(),
+    description: z.string().trim().optional() // Optional: add to Mongoose schema if you plan to save it
+  })
+  .refine(
+    (data) => {
+      if (data.startDate && data.endDate) {
+        return data.endDate >= data.startDate;
+      }
+      return true;
+    },
+    { message: 'End date must be after or equal to start date', path: ['endDate'] }
+  );
+
+
+export const validateAddEducation = (req, res, next) => {
+  const cleansedBody = cleanseData(req.body ?? {});
+  
+  const result = addEducationSchema.safeParse(cleansedBody)
+  if (!result.success) {
+    removeUploadedFile(req)
+    const errorMessage = result.error.issues[0].message;
+    return ErrorHandler(res, 400, errorMessage);
+  }
+
+  req.body = result.data;
+  next();
+};
+
+
+
+
 /* ==========================================================================
    CERTIFICATION VALIDATION
    ========================================================================== */

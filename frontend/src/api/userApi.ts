@@ -76,6 +76,19 @@ type CertInput = {
   certificationImage?: File | null;
 };
 
+
+export interface UserEducation {
+  _id?: string;
+  userId?: string;
+  schoolName: string;
+  degree: string;
+  fieldStudy: string;
+  educationLevel: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+
 const toCertForm = (data: CertInput) => {
   const body = new FormData();
   if (data.certificationName) body.append("certificationName", data.certificationName);
@@ -236,6 +249,16 @@ export const updateExprience = async (userId: string, expId: string, exp: UserEx
     return result.data ?? result
 }
 
+export const deleteExperience = async(userId:string, expId: string): Promise<void> => {
+  const res = await apiFetch(`/delete-user-experiences/${userId}`,{
+    method: "DELETE",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({id: expId })
+  })
+
+  if(!res.ok) throw await readError(res, "Failed to delete user expriences")
+}
+
 export const addCertificateDetail = async (userId: string, data: CertInput): Promise<UserCertificate> => {
   const res = await apiFetch(`/add-user-certification/${userId}`, 
     { 
@@ -266,4 +289,29 @@ export const deleteCertificateDetail = async (certId: string): Promise<void> => 
       "DELETE" 
     });
   if (!res.ok) throw await readError(res, "Failed to delete certificate");
+};
+
+
+export const addEducationDetail = async (userId: string,
+  payload: UserEducation
+): Promise<UserEducation> => {
+  const res = await apiFetch(`/add-user-education/${userId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw await readError(res,"failed to add education");
+  const json = await res.json();
+  return json.data ?? json; 
+};
+
+export const getUserEducation = async (userId: string): Promise<UserEducation[]> => {
+  const res = await apiFetch(`/get-user-education/${userId}`, 
+    { 
+      method: "GET",
+      credentials: "include", 
+     });
+  if (!res.ok) throw await readError(res, "failed to retrieve education details");
+  const json = await res.json();
+  return json.data ?? json;
 };
