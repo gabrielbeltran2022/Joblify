@@ -101,12 +101,12 @@ export const validateUpdateUser = (req, res, next) => {
 
 export const updateEducationSchema = z
   .object({
-    degree: z.string().trim().optional(),
-    school: z.string().trim().optional(),
-    fieldOfStudy: z.string().trim().optional(),
+    schoolName: z.string().trim().min(1, 'School name is required').optional(),
+    educationLevel: z.string().trim().min(1).optional(),
+    degree: z.string().trim().min(1).optional(),
+    fieldStudy: z.string().trim().min(1).optional(),
     startDate: z.coerce.date({ invalid_type_error: 'Invalid start date format' }).optional(),
     endDate: z.coerce.date({ invalid_type_error: 'Invalid end date format' }).optional(),
-    description: z.string().trim().optional()
   })
   .refine(
     (data) => {
@@ -323,3 +323,67 @@ export const refreshTokenPayload = z.object({
   iat: z.number().optional(),
   exp: z.number().optional()
 });
+
+
+/* ==========================================================================
+   Employer Validator
+   ========================================================================== */
+
+   export const validateAddEmployerSchema = z.object({
+  _id: z.string().trim().optional(),
+  userId: z.string().trim().optional(),
+  companyName: z
+    .string({ required_error: 'Company name is required' })
+    .trim()
+    .min(1, { message: 'Company name cannot be empty' }),
+  industry: z.string().trim().optional(),
+  founded: z.coerce.date({ invalid_type_error: 'Invalid start date format' }).optional(),
+  location: z.string().trim().optional(),
+  companySize: z.coerce.number({ invalid_type_error: 'Company size must be a number' }).optional(),
+  isEmployer: z.boolean().optional(),
+});
+
+   export const validateAddEmployer = (req, res, next) => {
+  
+  const cleansedBody = cleanseData(req.body);
+    
+  const result = validateAddEmployerSchema.safeParse(cleansedBody);
+
+  if (!result.success) {
+    const errorMessage = result.error.issues[0]?.message || 'Validation failed';
+    return ErrorHandler(res, 400, errorMessage);
+  }
+  req.body = result.data;
+
+  next();
+};
+
+
+export const validateUpdateEmployerSchema = z.object({
+  _id: z.string().trim().optional(),
+  userId: z.string().trim().optional(),
+  companyName: z
+    .string()
+    .trim()
+    .min(1, { message: 'Company name cannot be empty' })
+    .optional(),
+  industry: z.string().trim().optional(),
+  founded: z.coerce.date({ invalid_type_error: 'Invalid start date format' }).optional(),
+  location: z.string().trim().optional(),
+  companySize: z.coerce.number({ invalid_type_error: 'Company size must be a number' }).optional(),
+  isEmployer: z.boolean().optional(),
+});
+
+export const validateUpdateEmployer = (req, res, next) => {
+  const cleansedBody = cleanseData(req.body);
+    
+  const result = validateUpdateEmployerSchema.safeParse(cleansedBody);
+
+  if (!result.success) {
+    const errorMessage = result.error.issues[0]?.message || 'Validation failed';
+    return ErrorHandler(res, 400, errorMessage);
+  }
+  
+  req.body = result.data;
+  next();
+};

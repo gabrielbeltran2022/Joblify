@@ -7,6 +7,7 @@ import {
   deleteCertificateDetail,
   deleteExperience,
   getUserEducation,
+  deleteEducation,
   type User,
   type UserExperience,
   type UserCertificate,
@@ -21,6 +22,8 @@ import { AddExpriences } from "./subcomponents/AddExpriences";
 import { EditExperiences } from "./subcomponents/EditExpriences";
 import { AddCertificate } from "./subcomponents/AddCertificate";
 import { AddEducation } from "./subcomponents/AddEducation"
+import { EditEducation } from "./subcomponents/EditEducation"
+import { EditCertificate } from "./subcomponents/EditCertificate";
 
 /* -------------------------------------------------------------------------- */
 /* Types & constants                                                          */
@@ -121,6 +124,42 @@ const AddButton = ({ label, onClick }: { label: string; onClick: () => void }) =
   </button>
 );
 
+const PencilIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.8}
+    stroke="currentColor"
+    className={className}
+    aria-hidden="true"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.862 4.487Zm0 0L19.5 7.125"
+    />
+  </svg>
+);
+
+const TrashIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.8}
+    stroke="currentColor"
+    className={className}
+    aria-hidden="true"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+    />
+  </svg>
+);
+
 const SectionHeader = ({
   title,
   count,
@@ -211,11 +250,14 @@ export const UserProfile = ({
   const [isEditExpOpen, setIsEditExpOpen] = useState(false);
   const [selectedExperience, setSelectedExperience] = useState<UserExperience | null>(null);
   const [isOpenEducation, setIsOpenEducation] = useState(false);
+  const [isEditEduOpen, setIsEditEduOpen] = useState(false);
+  const [selectedEducation, setSelectedEducation] = useState<UserEducation | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   // The same modal handles adding (selectedCertificate = null) and editing
   const [isCertificateOpen, setIsCertificateOpen] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState<UserCertificate | null>(null);
   const [selectedCertImage, setSelectedCertImage] = useState<string | null>(null);
+  const [isEditCertOpen, setIsEditCertOpen] = useState(false);
 
   // Data state
   const [experiences, setExperiences] = useState<UserExperience[]>([]);
@@ -291,15 +333,19 @@ export const UserProfile = ({
     };
   }, [targetUserId, location]);
 
+
+
   // Lock page scroll while any modal is open
   const anyModalOpen =
     isEditOpen ||
     isAddExperience ||
     isEditExpOpen ||
     isCertificateOpen ||
+    isEditCertOpen ||
     Boolean(selectedCertImage) ||
-    isOpenEducation
-    ;
+    isOpenEducation ||
+    isEditEduOpen;
+  ;
 
   useEffect(() => {
     document.body.style.overflow = anyModalOpen ? "hidden" : "unset";
@@ -369,6 +415,13 @@ export const UserProfile = ({
     eduPage * EDU_PER_PAGE
   );
 
+  useEffect(() => {
+    if (totalEduPages > 0 && eduPage > totalEduPages) setEduPage(totalEduPages);
+  }, [totalEduPages, eduPage]);
+
+  useEffect(() => {
+    if (totalCertPages > 0 && certPage > totalCertPages) setCertPage(totalCertPages);
+  }, [totalCertPages, certPage]);
   /* -------------------------------- Handlers ------------------------------ */
 
   const handleSaveProfile = (updatedUser: Partial<User>) => {
@@ -414,37 +467,34 @@ export const UserProfile = ({
     }
   };
   // Certificates
-  const handleOpenAddCertificate = () => {
-    setSelectedCertificate(null);
-    setIsCertificateOpen(true);
-  };
+
+  const handleOpenAddCertificate = () => setIsCertificateOpen(true);
 
   const handleOpenEditCertificate = (cert: UserCertificate) => {
     if (!canEdit) return;
     setSelectedCertificate(cert);
-    setIsCertificateOpen(true);
+    setIsEditCertOpen(true);
   };
 
-  const handleCloseCertificate = () => {
-    setIsCertificateOpen(false);
+  const handleCloseAddCertificate = () => setIsCertificateOpen(false);
+
+  const handleCloseEditCertificate = () => {
+    setIsEditCertOpen(false);
     setSelectedCertificate(null);
   };
 
-  // Used for both add and edit
   const handleSaveCertificate = (saved: UserCertificate) => {
-    if (saved) {
-      setCertificates((prev) =>
-        prev.some((c) => c._id === saved._id)
-          ? prev.map((c) => (c._id === saved._id ? saved : c))
-          : [saved, ...prev]
-      );
-    }
-    handleCloseCertificate();
+    if (saved) setCertificates((prev) => [saved, ...prev]);
+    handleCloseAddCertificate();
+  };
+
+  const handleSaveEditedCertificate = (updated: UserCertificate) => {
+    setCertificates((prev) => prev.map((c) => (c._id === updated._id ? updated : c)));
+    handleCloseEditCertificate();
   };
 
   const handleDeleteCertificate = async (cert: UserCertificate) => {
     if (!canEdit || !cert._id) return;
-    if (!window.confirm(`Delete "${cert.certificationName}"?`)) return;
 
     try {
       await deleteCertificateDetail(cert._id);
@@ -459,38 +509,69 @@ export const UserProfile = ({
     setIsOpenEducation(false)
   }
 
+  const handleOpenEditEducation = (edu: UserEducation) => {
+    if (!canEdit) return;
+    setSelectedEducation(edu);
+    setIsEditEduOpen(true);
+  };
+
+  const handleCloseEditEducation = () => {
+    setIsEditEduOpen(false);
+    setSelectedEducation(null);
+  };
+
+  const handleSaveEditedEducation = (updated: UserEducation) => {
+    console.log(updated)
+    setEducations((prev) => prev.map((item) => (item._id === updated._id ? updated : item)));
+    handleCloseEditEducation();
+  };
+
+  const handleDeleteEducation = async (eduId?: string) => {
+    const userId = user?._id;
+    if (!canEdit || !userId || !eduId) return;
+
+    try {
+      await deleteEducation(userId, eduId);
+      setEducations((prev) => prev.filter((edu) => edu._id !== eduId));
+    } catch (error) {
+      console.error("Delete education failed:", error);
+    }
+  };
+
 
   /* --------------------------------- Render ------------------------------- */
 
   if (loading) return <Loading isLoading={true} />;
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-6 bg-gray-100">
-      <div className="flex flex-col w-full max-w-5xl p-6 gap-6 bg-white rounded-xl shadow-lg border border-gray-200 text-gray-800">
+    <div className="flex min-h-screen items-center justify-center p-3 sm:p-6 bg-gray-100">
+      <div className="flex flex-col w-full max-w-5xl p-4 sm:p-6 gap-6 bg-white rounded-xl shadow-lg border border-gray-200 text-gray-800">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 pb-6">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-200 pb-6">
+          <div className="flex items-center gap-4 min-w-0">
             <img
               src={profileImageSrc}
               alt="Profile"
-              className="w-24 h-24 rounded-full object-cover scale-110"
+              className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-full object-cover"
               onError={(e) => {
                 e.currentTarget.src = defaultProfile;
               }}
             />
-            <div className="flex flex-col gap-1">
-              <h1 className="text-3xl font-bold text-gray-900">{fullName || "No data"}</h1>
+            <div className="flex flex-col gap-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
+                {fullName || "No data"}
+              </h1>
               <div className="text-sm text-gray-500">{jobtitle || "No data"}</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {isLoggedIn &&
-              (canEdit ? (
+          {isLoggedIn && (
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {canEdit ? (
                 <button
                   type="button"
                   onClick={() => setIsEditOpen(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition"
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition whitespace-nowrap"
                 >
                   Edit profile
                 </button>
@@ -498,42 +579,43 @@ export const UserProfile = ({
                 <button
                   type="button"
                   onClick={onMakeAppointment}
-                  className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition"
+                  className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition whitespace-nowrap"
                 >
                   Make an Appointment
                 </button>
-              ))}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Details grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Left column */}
-          <div className="flex flex-col gap-6 md:col-span-1 border-r-0 md:border-r border-gray-200 pr-0 md:pr-6">
+          <div className="flex flex-col gap-6 lg:col-span-1 min-w-0 border-b lg:border-b-0 pb-6 lg:pb-0 lg:border-r border-gray-200 lg:pr-6">
             <div className="flex flex-col gap-4">
               <h2 className="text-lg font-bold text-gray-900">Personal details</h2>
               <div className="flex flex-col gap-3 text-sm">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">📍</span>
-                  <div>
+                <div className="flex items-start gap-3">
+                  <span className="text-xl shrink-0 w-6 text-center">📍</span>
+                  <div className="min-w-0 break-words">
                     Lives in <strong className="font-semibold">{user?.address || "No data"}</strong>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">🏠</span>
-                  <div>
+                <div className="flex items-start gap-3">
+                  <span className="text-xl shrink-0 w-6 text-center">🏠</span>
+                  <div className="min-w-0 break-words">
                     Contact: <strong className="font-semibold">{user?.contact || "No data"}</strong>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">✉️</span>
-                  <div>
-                    Email: <strong className="font-semibold">{user?.email || "No data"}</strong>
+                <div className="flex items-start gap-3">
+                  <span className="text-xl shrink-0 w-6 text-center">✉️</span>
+                  <div className="min-w-0 break-words">
+                    Email: <strong className="font-semibold break-all">{user?.email || "No data"}</strong>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">🎂</span>
-                  <div>
+                <div className="flex items-start gap-3">
+                  <span className="text-xl shrink-0 w-6 text-center">🎂</span>
+                  <div className="min-w-0 break-words">
                     Age:{" "}
                     <strong className="font-semibold">
                       {age !== null ? `${age} years old` : "No data"}
@@ -546,10 +628,8 @@ export const UserProfile = ({
             <div className="flex flex-col gap-3 border-t border-gray-200 pt-4">
               <h2 className="text-lg font-bold text-gray-900">Work</h2>
               <div className="flex items-center gap-3 text-sm">
-                <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-600">
-                  💼
-                </div>
-                <span className="font-medium text-gray-800">{profession || "No data"}</span>
+                <div className="w-9 h-9 shrink-0 bg-gray-100 rounded-full flex items-center justify-center text-gray-600">💼</div>
+                <span className="font-medium text-gray-800 min-w-0 break-words">{profession || "No data"}</span>
               </div>
             </div>
 
@@ -569,21 +649,61 @@ export const UserProfile = ({
                   <LoadingState>Loading education...</LoadingState>
                 ) : visibleEducation.length > 0 ? (
                   <>
-                    <div className="flex flex-col gap-4 ">
-                      {visibleEducation.map((edu) => (
-                        <div key={edu._id || edu.id} className="flex items-center gap-3 text-sm pb-6">
-                          <div className="w-9 h-9 shrink-0 bg-gray-100 rounded-full flex items-center justify-center text-gray-600">
-                            🎓
+                    <div className="flex flex-col gap-3 min-h-[17rem]">
+                      {visibleEducation.map((edu) => {
+                        const eduId = edu._id || edu.id;
+
+                        return (
+                          <div
+                            key={eduId}
+                            role={canEdit ? "button" : undefined}
+                            tabIndex={canEdit ? 0 : undefined}
+                            onClick={() => canEdit && handleOpenEditEducation(edu)}
+                            onKeyDown={(e) => {
+                              if (canEdit && (e.key === "Enter" || e.key === " ")) {
+                                e.preventDefault();
+                                handleOpenEditEducation(edu);
+                              }
+                            }}
+                            className={`flex items-start gap-4 text-sm p-4 border border-gray-200 rounded-lg bg-gray-50 transition focus:outline-none ${canEdit ? "hover:shadow-sm hover:border-blue-300 cursor-pointer" : "cursor-default"
+                              }`}
+                          >
+                            <div className="w-10 h-10 shrink-0 bg-white rounded-full flex items-center justify-center text-gray-600">
+                              🎓
+                            </div>
+
+                            <div className="flex flex-col min-w-0 flex-1 gap-1">
+                              <span className="font-semibold text-gray-900 leading-snug break-words">
+                                {edu.schoolName || "No data"}
+                              </span>
+                              {edu.degree && (
+                                <span className="text-xs text-gray-600 leading-snug break-words">
+                                  {edu.degree}
+                                  {edu.fieldStudy ? ` in ${edu.fieldStudy}` : ""}
+                                </span>
+                              )}
+                              <span className="text-xs text-gray-400 mt-0.5">
+                                {formatDateRange(edu.startDate, edu.endDate)}
+                              </span>
+                            </div>
+
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteEducation(eduId);
+                                }}
+                                aria-label="Delete education"
+                                title="Delete"
+                                className="shrink-0 -mr-1 -mt-1 p-2 rounded-full text-red-600 hover:bg-red-50 hover:text-red-700 transition cursor-pointer"
+                              >
+                                <TrashIcon />
+                              </button>
+                            )}
                           </div>
-                          <div className="flex flex-col">
-                            <span className="font-medium text-gray-800">{edu.schoolName || "No data"}</span>
-                            {edu.degree && <span className="text-xs text-gray-500">{edu.degree}</span>}
-                            <span className="text-xs text-gray-400">
-                              {formatDateRange(edu.startDate, edu.endDate)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     <div className="mt-auto">
@@ -598,7 +718,7 @@ export const UserProfile = ({
           </div>
 
           {/* Right column */}
-          <div className="flex flex-col gap-8 md:col-span-2">
+          <div className="flex flex-col gap-8 lg:col-span-2 min-w-0">
             {/* Experiences */}
             <section className="flex flex-col gap-4">
               <SectionHeader
@@ -636,9 +756,9 @@ export const UserProfile = ({
                           : "cursor-default"
                           }`}
                       >
-                        <div className="flex justify-between items-start w-full">
-                          <h3 className="font-semibold text-gray-900">{exp.jobtitle || exp.role}</h3>
-                          <span className="text-xs text-gray-500 font-medium">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 w-full">
+                          <h3 className="font-semibold text-gray-900 break-words min-w-0">{exp.jobtitle || exp.role}</h3>
+                          <span className="text-xs text-gray-500 font-medium sm:whitespace-nowrap sm:shrink-0">
                             {exp.period || formatDateRange(exp.startDate, exp.endDate, exp.isCurrent)}
                           </span>
                         </div>
@@ -652,14 +772,15 @@ export const UserProfile = ({
                         {canEdit && (
                           <button
                             type="button"
-
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeleteExperiences(expId);
                             }}
-                            className="self-end mt-2 text-sm text-red-600 cursor-pointer hover:text-red-700 hover:underline"
+                            aria-label="Delete experience"
+                            title="Delete"
+                            className="self-end mt-2 p-1.5 rounded-full text-red-600 hover:bg-red-50 hover:text-red-700 transition cursor-pointer"
                           >
-                            Delete
+                            <TrashIcon />
                           </button>
                         )}
                       </div>
@@ -719,29 +840,33 @@ export const UserProfile = ({
                             )}
                           </div>
 
-                          <div className="p-3 flex items-start justify-between gap-2">
-                            <div className="flex flex-col gap-1 min-w-0">
+                          <div className="p-3 flex flex-wrap items-start justify-between gap-2">
+                            <div className="flex flex-col gap-1 min-w-0 flex-1">
                               <h4 className="font-bold text-gray-900 text-sm line-clamp-1">{title}</h4>
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs text-gray-500 break-words">
                                 {issuer} {issued ? `• ${issued}` : ""}
                               </p>
                             </div>
 
                             {canEdit && (
-                              <div className="flex gap-1 shrink-0">
+                              <div className="flex gap-1.5 shrink-0">
                                 <button
                                   type="button"
                                   onClick={() => handleOpenEditCertificate(cert)}
-                                  className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+                                  aria-label="Edit certificate"
+                                  title="Edit"
+                                  className="p-1.5 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-600 transition cursor-pointer"
                                 >
-                                  Edit
+                                  <PencilIcon />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteCertificate(cert)}
-                                  className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition"
+                                  aria-label="Delete certificate"
+                                  title="Delete"
+                                  className="p-1.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition cursor-pointer"
                                 >
-                                  Delete
+                                  <TrashIcon />
                                 </button>
                               </div>
                             )}
@@ -808,17 +933,33 @@ export const UserProfile = ({
       {canEdit && isCertificateOpen && (
         <AddCertificate
           user={user}
-          certificate={selectedCertificate}
-          onClose={handleCloseCertificate}
+          onClose={handleCloseAddCertificate}
           onSave={handleSaveCertificate}
         />
       )}
 
+      {canEdit && isEditCertOpen && selectedCertificate && (
+        <EditCertificate
+          user={user}
+          certificate={selectedCertificate}
+          onClose={handleCloseEditCertificate}
+          onSave={handleSaveEditedCertificate}
+        />
+      )}
       {canEdit && isOpenEducation && (
         <AddEducation
           user={user}
           onClose={() => setIsOpenEducation(false)}
           onSave={handleSaveEducation}
+        />
+      )}
+
+      {canEdit && isEditEduOpen && selectedEducation && (
+        <EditEducation
+          user={user}
+          education={selectedEducation}
+          onClose={handleCloseEditEducation}
+          onSave={handleSaveEditedEducation}
         />
       )}
 

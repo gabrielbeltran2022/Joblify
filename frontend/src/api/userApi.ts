@@ -63,7 +63,7 @@ export interface UserCertificate {
   userId: string;
   certificationImage?: string | null;
   certificationName: string;
-  certifiedFrom: string;          
+  certifiedFrom: string;
   endDate?: Date | string | null;
   startDate?: Date | string | null;
 }
@@ -96,18 +96,18 @@ const toCertForm = (data: CertInput) => {
   if (data.startDate) body.append("startDate", data.startDate);
   if (data.endDate) body.append("endDate", data.endDate);
   if (data.certificationImage) body.append("certificationImage", data.certificationImage);
-  return body; 
+  return body;
 };
 
 export const handleLogin = async (payload: LoginPayload): Promise<LoginResponse | void> => {
   try {
     const response = await fetch(`${API_URL}/send-code`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json' 
+      headers: {
+        'Content-Type': 'application/json'
       },
-      credentials: 'include', 
-      body: JSON.stringify(payload) 
+      credentials: 'include',
+      body: JSON.stringify(payload)
     });
 
     const data = await response.json();
@@ -130,8 +130,8 @@ export const handleLogin = async (payload: LoginPayload): Promise<LoginResponse 
 
 
 export const verifyOtp = async (payload: { email: string; code: string }) => {
-  
-  const response = await fetch(`${API_URL}/verify-signup`, { 
+
+  const response = await fetch(`${API_URL}/verify-signup`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -164,7 +164,7 @@ export const getUserExperiences = async (userId: string): Promise<UserExperience
   try {
     const response = await fetch(`${API_URL}/user-experiences/${userId}`, {
       method: "GET",
-      credentials: "include", 
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -184,10 +184,10 @@ export const getUserExperiences = async (userId: string): Promise<UserExperience
 
 
 export const getUserCertificate = async (userId: string): Promise<UserCertificate[]> => {
-    try{
-      const response = await fetch(`${API_URL}/get-certification/${userId}`, {
+  try {
+    const response = await fetch(`${API_URL}/get-certification/${userId}`, {
       method: "GET",
-      credentials: "include", 
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -198,11 +198,11 @@ export const getUserCertificate = async (userId: string): Promise<UserCertificat
     const result = await response.json();
 
     return result.data ?? result ?? [];
-    }catch(e: any){
-      console.error('Failed to retrieve data:',e)
-      throw e 
-    }
-} 
+  } catch (e: any) {
+    console.error('Failed to retrieve data:', e)
+    throw e
+  }
+}
 
 /* ---------- PROTECTED (token + auto refresh) ---------- */
 
@@ -238,32 +238,32 @@ export const addExprincesDetail = async (userId: string, exp: UserExperience): P
 
 
 export const updateExprience = async (userId: string, expId: string, exp: UserExperience): Promise<UserExperience> => {
-    const res = await apiFetch(`/update-user-expriences/${userId}/${expId}`,{
-      method: "PUT",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(exp)
-    })
-
-    if(!res.ok) throw await readError(res,"Failed to update user expriences")
-    const result = await res.json();
-    return result.data ?? result
-}
-
-export const deleteExperience = async(userId:string, expId: string): Promise<void> => {
-  const res = await apiFetch(`/delete-user-experiences/${userId}`,{
-    method: "DELETE",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({id: expId })
+  const res = await apiFetch(`/update-user-expriences/${userId}/${expId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(exp)
   })
 
-  if(!res.ok) throw await readError(res, "Failed to delete user expriences")
+  if (!res.ok) throw await readError(res, "Failed to update user expriences")
+  const result = await res.json();
+  return result.data ?? result
+}
+
+export const deleteExperience = async (userId: string, expId: string): Promise<void> => {
+  const res = await apiFetch(`/delete-user-experiences/${userId}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: expId })
+  })
+
+  if (!res.ok) throw await readError(res, "Failed to delete user expriences")
 }
 
 export const addCertificateDetail = async (userId: string, data: CertInput): Promise<UserCertificate> => {
-  const res = await apiFetch(`/add-user-certification/${userId}`, 
-    { 
-      method: "POST", 
-      body: toCertForm(data) 
+  const res = await apiFetch(`/add-user-certification/${userId}`,
+    {
+      method: "POST",
+      body: toCertForm(data)
     });
   if (!res.ok) throw await readError(res, "Failed to add certificate");
   const result = await res.json();
@@ -273,21 +273,23 @@ export const addCertificateDetail = async (userId: string, data: CertInput): Pro
 
 export const updateCertificateDetail = async (userId: string, certId: string, data: CertInput): Promise<UserCertificate> => {
   const res = await apiFetch(`/update-user-certification/${userId}/${certId}`,
-     { 
-      method: "PUT", 
-      body: toCertForm(data) 
+    {
+      method: "PUT",
+      body: toCertForm(data)
     });
-  
-    if (!res.ok) throw await readError(res, "Failed to update certificate");
+
+  if (!res.ok) throw await readError(res, "Failed to update certificate");
   const result = await res.json();
   return result.data ?? result;
 };
 
 export const deleteCertificateDetail = async (certId: string): Promise<void> => {
-  const res = await apiFetch(`/delete-user-certification/${certId}`, 
-    { method: 
-      "DELETE" 
-    });
+  const res = await apiFetch(`/delete-user-certification/${certId}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ _id: certId }),
+  })
   if (!res.ok) throw await readError(res, "Failed to delete certificate");
 };
 
@@ -300,18 +302,49 @@ export const addEducationDetail = async (userId: string,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw await readError(res,"failed to add education");
+  if (!res.ok) throw await readError(res, "failed to add education");
   const json = await res.json();
-  return json.data ?? json; 
+  return json.data ?? json;
 };
 
 export const getUserEducation = async (userId: string): Promise<UserEducation[]> => {
-  const res = await apiFetch(`/get-user-education/${userId}`, 
-    { 
+  const res = await apiFetch(`/get-user-education/${userId}`,
+    {
       method: "GET",
-      credentials: "include", 
-     });
+      credentials: "include",
+    });
   if (!res.ok) throw await readError(res, "failed to retrieve education details");
+  const json = await res.json();
+  return json.data ?? json;
+};
+
+export const deleteEducation = async (
+  userId: string,
+  eduId: string
+): Promise<UserEducation> => {
+  const res = await apiFetch(`/delete-user-education/${userId}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ _id: eduId }),
+  });
+  if (!res.ok) throw await readError(res, "failed to delete education");
+  const json = await res.json();
+  return json.data ?? json;
+};
+
+export const updateEducation = async (
+  userId: string,
+  eduId: string,
+  payload: Partial<UserEducation>
+): Promise<UserEducation> => {
+  const res = await apiFetch(`/update-user-education/${userId}/${eduId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw await readError(res, "failed to update education");
   const json = await res.json();
   return json.data ?? json;
 };

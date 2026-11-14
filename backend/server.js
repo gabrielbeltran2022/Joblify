@@ -6,6 +6,7 @@ import 'dotenv/config';
 import path from "path";
 import userRoute from './routes/userRouter.js';
 import authRoute from './routes/authRouter.js';
+import employerRoutes from './routes/employerRoutes.js'
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use(cookieParser());
 
 app.use('/api', userRoute);
 app.use('/api', authRoute)
+app.use('/api', employerRoutes)
 
 const PORT = process.env.PORT || 3000;
 

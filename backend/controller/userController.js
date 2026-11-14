@@ -11,6 +11,7 @@ import { sendVerificationEmail } from '../services/emailSender.js'
 import 'dotenv/config';
 import fs from "fs";
 import { id } from "zod/v4/locales";
+import path from "path";
 
 
 
@@ -352,17 +353,16 @@ export const addEducation = async (req, res) => {
       return ErrorHandler(res, 403, 'Forbidden: Insufficient permissions');
     }
 
-      const newEducation = new Education({
-        userId: userInDb._id,
-        schoolName: cleanData.schoolName,
-        degree: cleanData.degree,
-        fieldStudy: cleanData.fieldStudy,
-        educationLevel: cleanData.educationLevel,
-        startDate: cleanData.startDate,
-        endDate: cleanData.endDate
-      });
+    const newEducation = new Education({
+      userId: userInDb._id,
+      schoolName: cleanData.schoolName,
+      degree: cleanData.degree,
+      fieldStudy: cleanData.fieldStudy,
+      educationLevel: cleanData.educationLevel,
+      startDate: cleanData.startDate,
+      endDate: cleanData.endDate
+    });
 
-      console.log(newEducation)
 
     const savedEducation = await newEducation.save();
 
@@ -375,17 +375,85 @@ export const addEducation = async (req, res) => {
 
 
 export const updateEducation = async (req, res) => {
-  const { id: targetUserId } = req.params;
+  const { id: targetUserId, eduId } = req.params;
   const cleanData = req.body;
   const authUser = req.user;
   const authId = (authUser?._id || authUser?.id)?.toString();
 
-  try {
-
-  } catch (e) {
-    return ErrorHandler(res, 500, "INTERNAL_SERVER_ERROR")
+  if (!authUser || !authId) {
+    return ErrorHandler(res, 401, 'Unauthorized: User authentication context missing');
   }
-}
+
+  try {
+    const userInDb = await userModel.findById(authId);
+    if (!userInDb) {
+      return ErrorHandler(res, 404, 'Authenticated user not found in database');
+    }
+
+    const isSelf = targetUserId === authId;
+    const isAdmin = userInDb.accessLevel === 2;
+
+    if (!isSelf && !isAdmin) {
+      return ErrorHandler(res, 403, 'Forbidden: Insufficient permissions');
+    }
+
+    const updated = await Education.findOneAndUpdate(
+      { _id: eduId, userId: targetUserId },
+      { $set: cleanData },
+      { returnDocument: 'after', runValidators: true }
+    );
+
+    if (!updated) {
+      return ErrorHandler(res, 404, 'Education not found');
+    }
+
+    return SuccessHandler(res, updated, 'Education updated successfully', 200);
+  } catch (e) {
+    return ErrorHandler(res, 500, 'INTERNAL_SERVER_ERROR');
+  }
+};
+
+export const deleteEducation = async (req, res) => {
+  const targetUserId = req.params.id;
+  const educationId = req.body?._id;
+  const authUser = req.user;
+  const authId = (authUser?._id || authUser?.id)?.toString();
+
+  if (!authUser || !authId) {
+    return ErrorHandler(res, 401, 'Unauthorized: User authentication context missing');
+  }
+
+  try {
+    const userInDb = await userModel.findById(authId);
+    if (!userInDb) {
+      return ErrorHandler(res, 404, 'Authenticated user not found in database');
+    }
+
+    const isSelf = targetUserId === authId;
+    const isAdmin = userInDb.accessLevel === 2;
+
+    if (!isSelf && !isAdmin) {
+      return ErrorHandler(res, 403, 'Forbidden: Insufficient permissions');
+    }
+
+    if (!educationId) {
+      return ErrorHandler(res, 400, 'Bad Request: Education ID is required');
+    }
+
+    const educationData = await Education.findOneAndDelete({
+      _id: educationId,
+      userId: targetUserId,
+    });
+
+    if (!educationData) {
+      return ErrorHandler(res, 404, 'Education not found or does not belong to this user');
+    }
+
+    return SuccessHandler(res, educationData, 'Successfully deleted', 200);
+  } catch (e) {
+    return ErrorHandler(res, 500, 'INTERNAL_SERVER_ERROR');
+  }
+};
 
 export const addExpriences = async (req, res) => {
   const targetUserId = req.params.id;
@@ -459,7 +527,7 @@ export const updateExpriences = async (req, res) => {
   if (!authUser || !authId) {
     return ErrorHandler(res, 401, 'Unauthorized: User authentication context missing');
   }
-  console.log(expId)
+
   try {
     const userInDb = await userModel.findById(authId);
 
@@ -533,7 +601,7 @@ export const deleteUserExperiences = async (req, res) => {
       return ErrorHandler(res, 403, 'Forbidden: Insufficient permissions');
     }
 
-    const experienceId = cleanData.id || cleanData._id;
+    const experienceId = cleanData._id;
 
     if (!experienceId) {
       return ErrorHandler(res, 400, 'Bad Request: Experience ID is required');
@@ -661,12 +729,11 @@ export const updateCertification = async (req, res) => {
 
 
 export const deleteCertificate = async (req, res) => {
-  const { certId: certId } = req.params
-  const userId = req.user._id
-  const isAdmin = req.user.accessLevel === 2
+  const { certId } = req.params
+  const userId = req.user?._id
+  const isAdmin = req.user?.accessLevel === 2
 
   try {
-
     if (!userId) {
       return ErrorHandler(res, 400, "user is not exists")
     }
@@ -675,16 +742,26 @@ export const deleteCertificate = async (req, res) => {
       return ErrorHandler(res, 400, "Certification Id is required in parameters")
     }
 
-    const data = isAdmin ? { _id: certId } : { _id: certId, userId: userId }
+    const filter = isAdmin ? { _id: certId } : { _id: certId, userId }
 
-    const deletedCertification = await Certification.findOneAndDelete(data)
+    const deletedCertification = await Certification.findOneAndDelete(filter)
 
-    if (deletedCertification) {
-      return ErrorHandler(res, 400, "Certification failed to delete")
+    if (!deletedCertification) {
+      return ErrorHandler(res, 404, "Certification not found or does not belong to this user")
     }
 
-    return SuccessHandler(res, deletedCertification, 200)
+    if (deletedCertification.certificationImage) {
+      const imagePath = path.join(process.cwd(),"public", deletedCertification.certificationImage)
+      console.log(imagePath)
+      
+      fs.unlink(imagePath, (err) => {
+        if (err) {
+          console.error("Failed to delete physical image file", err)
+        }
+      })
+    }
 
+    return SuccessHandler(res, deletedCertification, 'Successfully deleted', 200)
   } catch (e) {
     console.error("INTERNAL SERVER ERROR", e)
     return ErrorHandler(res, 500, "INTERNAL SERVER ERROR")

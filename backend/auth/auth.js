@@ -1,4 +1,4 @@
-import {  ErrorHandler } from "../utils/Utilities.js";
+import { ErrorHandler } from "../utils/Utilities.js";
 import { refreshTokenPayload } from '../services/dataValidator.js';
 import jwt from 'jsonwebtoken';
 import { jwtPayloadSchema } from '../services/dataValidator.js'
@@ -7,24 +7,23 @@ import userModel from "../model/userModel.js";
 export const authenticationUser = (...credentials) => {
     return async (req, res, next) => {
         try {
-            const token = 
-                req.headers.authorization?.split(' ')[1] || 
-                req.cookies?.accessToken ||  req.cookies?.refreshToken;
-
+            const token =
+                req.headers.authorization?.split(' ')[1] ||
+                req.cookies?.accessToken || req.cookies?.refreshToken;
             
             if (!token) {
                 return ErrorHandler(res, 401, "Unauthorized: Access token missing");
             }
 
             let decoded;
-       
+
             try {
-           
+
                 decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-              
+
             } catch (jwtErr) {
-                  console.error("JWT VERIFY ERROR:", jwtErr);
-                    return ErrorHandler(res, 401, "Invalid or expired access token");
+                console.error("JWT VERIFY ERROR:", jwtErr);
+                return ErrorHandler(res, 401, "Invalid or expired access token");
             }
 
             const result = jwtPayloadSchema.safeParse(decoded);
@@ -42,17 +41,25 @@ export const authenticationUser = (...credentials) => {
             }
             req.user = existingUser;
 
+            
+                if (credentials.length > 0) {
+                const hasPermission = credentials.some((level) => existingUser.accessLevel >= level);
+                if (!hasPermission) {
+                    return ErrorHandler(res, 403, "Forbidden: Insufficient permissions");
+                }
+            }
+
 
             const targetUserId = req.user.id;
-            
+
 
             const isOwnAccount = targetUserId && targetUserId.toString() === existingUser._id.toString();
-            
-            
+
+
             if (credentials.length > 0) {
                 const userLevel = existingUser.accessLevel;
-                const hasPermission = credentials.includes(userLevel) || 
-                                      credentials.some(level => userLevel >= level);
+                const hasPermission = credentials.includes(userLevel) ||
+                    credentials.some(level => userLevel >= level);
                 // console.log(userLevel)
                 // console.log(hasPermission)
                 // console.log(isOwnAccount)
@@ -70,26 +77,26 @@ export const authenticationUser = (...credentials) => {
     };
 };
 
-export const verifyRefreshToken = (req,res,next) => {
-    const token = req.cookies?.refreshToken 
+export const verifyRefreshToken = (req, res, next) => {
+    const token = req.cookies?.refreshToken
 
-    if(!token){
-        return ErrorHandler(res,401,"Refresh Token required")
+    if (!token) {
+        return ErrorHandler(res, 401, "Refresh Token required")
     }
 
-    try{
-        const decoded = jwt.verify(token,process.env.REFRESH_TOKEN_SECRET)
+    try {
+        const decoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET)
 
         const result = refreshTokenPayload.safeParse(decoded)
 
-        if(!result.success){
-            return ErrorHandler(res,403,"Invalid refresh Token structure")
+        if (!result.success) {
+            return ErrorHandler(res, 403, "Invalid refresh Token structure")
         }
 
         req.user = result.data
         next();
 
-    }catch(e){
-        return ErrorHandler(res,500,"INTERNAL SERVER ERROR TOKEN")
+    } catch (e) {
+        return ErrorHandler(res, 500, "INTERNAL SERVER ERROR TOKEN")
     }
 }

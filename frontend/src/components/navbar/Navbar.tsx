@@ -26,12 +26,10 @@ export const Navbar = ({ user, loading, onLogout }: NavbarProps) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Use your imported Loading component when session is loading
   if (loading) {
     return <Loading isLoading={loading} />;
   }
 
-  // Combine firstName and lastName cleanly
   const fullName = user?.firstName 
     ? `${user.firstName} ${user.lastName || ''}`.trim() 
     : user?.email;
@@ -46,8 +44,6 @@ export const Navbar = ({ user, loading, onLogout }: NavbarProps) => {
   return (
     <nav className="w-full bg-white border-b border-slate-200 px-4 md:px-8">
       <div className="max-w-6xl mx-auto flex justify-between items-center h-20">
-        
-        {/* Brand / Logo */}
         <div className="flex items-center">
           <NavLink to={'/'} className="font-bold text-xl text-slate-800 flex items-center">
             {navdata[0]?.img ? (
@@ -78,7 +74,14 @@ export const Navbar = ({ user, loading, onLogout }: NavbarProps) => {
             </NavLink>
           ))}
         </div>
-
+          <div>
+              {navdata.slice(4,5).map((item) => (
+                <NavLink to={item.link} key={item.id}  className="text-blue-600 font-semibold border-blue-600 py-1">
+                    {item.title}
+                </NavLink>
+              ))
+              }
+          </div>
         <div className="flex items-center gap-4">
           {user ? (
             <div className="relative" ref={dropdownRef}>
@@ -144,7 +147,7 @@ export const Navbar = ({ user, loading, onLogout }: NavbarProps) => {
             </div>
           )}
         </div>
-
+          
       </div>
     </nav>
   ); 

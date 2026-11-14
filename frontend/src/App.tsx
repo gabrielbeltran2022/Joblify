@@ -12,6 +12,9 @@ import { UserProvider, useUserContext } from './context/UserContext';
 import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { getUserInfo } from './api/userApi';
+import { Company } from './components/companies/Company';
+import { EmployerLandingPage } from './components/employer/EmployerLandingPage';
+import { EmployerNav } from './components/navbar/EmployerNav';
 
 
 const LayoutNavbar = () => {
@@ -25,6 +28,15 @@ const LayoutNavbar = () => {
     </>
   );
 };
+
+const LayOutemployerNavbar = () => {
+      return (
+        <>
+          <EmployerNav/>
+          <Footer/>
+        </>
+      )
+}
 
 const ProfileRoute = () => {
   const { user: loggedInUser, setUser, loading, logout } = useUserContext();
@@ -80,6 +92,10 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/job" element={<Job />} />
             <Route path="/profile/:userId" element={<ProfileRoute />} />
+            <Route path='/company' element={<Company/>} />
+          </Route>
+          <Route element={<LayOutemployerNavbar/>}>
+            <Route path='/employer' element={<EmployerLandingPage/>}/>
           </Route>
           <Route path="/login" element={<Login />} />
           <Route path="/otp" element={<OTP />} />

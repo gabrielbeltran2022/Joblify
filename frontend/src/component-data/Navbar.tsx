@@ -12,12 +12,12 @@ export  const navdata = [
     {
         id: 2,
         title: 'Job Search',
-        link: ''
+        link: '/job'
     },
     {
         id: 3,
         title: 'Company View',
-        link: ''
+        link: '/company'
     },
     {
         id: 4,
@@ -27,6 +27,6 @@ export  const navdata = [
     {
         id: 5,
         title: 'Employers / Job Post',
-        link: ''
+        link: '/Employer'
     }
 ]
